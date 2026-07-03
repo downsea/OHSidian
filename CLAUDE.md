@@ -73,6 +73,21 @@ ohpm install        # hmcore, inversify, @electron/remote, …
   meaningful headless test gate. Verification = successful `assembleHap` +
   behavior on the real device.
 
+## Host (HarmonyOS PC) workspace — one-way sync, VM is the source of truth
+
+A copy of this repo lives on the host at `~/code/OHSidian` (VM view:
+`/mnt/linux_share/code/OHSidian`) as a **DevEco Studio sign/build/run station**
+(the DevEco auto-signing path for restricted permissions). Rules:
+
+- `watchexec` + `~/.bin/code-sync` mirror VM `~/code` → host **one-way**,
+  gitignore-filtered. **Edit tracked source only on the VM** — host-side edits
+  to tracked files never flow back and get clobbered on the next VM change.
+- Gitignored files are invisible to the sync, so they are **intentionally
+  divergent per side**: root `build-profile.json5` is `6.1.1(24)` on the VM
+  (headless toolchain, matches device) but `6.1.0(23)` on the host (DevEco's
+  max supported SDK). DevEco-written signingConfigs, `oh_modules/`, `build/`,
+  `agconnect-services.json` on the host all survive syncs for the same reason.
+
 ## ⚠ Known blocker: debug sideload is impossible from the CLI
 
 Read [`docs/issues/debug-sideload-blocked-by-writable-code-memory.md`](docs/issues/debug-sideload-blocked-by-writable-code-memory.md)
