@@ -1,6 +1,7 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Template: `~/code/claude-template.md` — this file follows its conventions.
 
 > **Fork setup** — `origin` = our fork `git@github.com:downsea/OHSidian.git`
 > (push target for local additions like CLAUDE.md and `docs/`); `upstream` =
@@ -73,6 +74,22 @@ ohpm install        # hmcore, inversify, @electron/remote, …
   meaningful headless test gate. Verification = successful `assembleHap` +
   behavior on the real device.
 
+### Build-cache / disk hygiene
+
+Build output here is heavy (a HAP is ~212 MB, plus `*/build/`, `oh_modules/`,
+and the LFS object store) and **a full disk on this VM is data corruption, not
+slowness** — the guest disk is a sparse image on a thin-provisioned host, so
+host-full ⇒ virtio write EIO ⇒ ext4 damage (2026-08-13 incident; chain and this
+host's margins in vault `30-Areas/Technology/hmos-pc-linux-env.md`).
+
+- **Check the real water level before building**: the guest's `df` lies — read
+  the host passthrough mount with `df -h /mnt/linux_share`. Below the margin,
+  clean before you build.
+- **Purge at wrap-up**: `rm -rf */build` (and `oh_modules` if no rebuild is
+  planned — `ohpm install` restores it); machine-wide sweep is `fed clean --apply`.
+- Freed guest space returns to the host asynchronously (trim lag, minutes) —
+  deletion is damage control, not a last-second flush.
+
 ## Host (HarmonyOS PC) workspace — one-way sync, VM is the source of truth
 
 A copy of this repo lives on the host at `~/code/OHSidian` (VM view:
@@ -100,6 +117,16 @@ path. Root cause + verified solution (AGC restricted-ACL application, or DevEco
 auto-signing) in
 [`docs/research/2026-07-03-writable-code-memory-sideload.md`](docs/research/2026-07-03-writable-code-memory-sideload.md).
 
+## Current state (snapshot — 2026-08-13; update, don't re-derive from git)
+
+- Fork is **even with `upstream/main`** (0 behind); our only commits on top are
+  the two local docs commits (research + host-workspace convention). No code
+  divergence from upstream — keep it that way unless a fix genuinely belongs here.
+- **Blocked** on device install by the restricted-permission issue above; the
+  build itself (`assembleHap` → ~212 MB HAP) and signing are known-good.
+- Not yet done: AGC restricted-ACL application, or a DevEco auto-signing run on
+  the host station — either unblocks install. Nothing else is in flight.
+
 ## Hard rules
 
 - **Never modify `obsidian.asar`** or anything under
@@ -110,18 +137,54 @@ auto-signing) in
 - LFS-tracked binaries (`.asar`, `.so`, `.pak`, `.bin`, `.dat`) must go through
   `git lfs`; a "modified" 130-byte pointer file means LFS wasn't pulled.
 
-## Local issue tracking
+## Research → dev, and the issue tracker
 
-Findings from build/sideload attempts go to `docs/issues/<slug>.md` (untracked,
-local) in the existing style: 现象 → 根因 → 排除项 → 复现步骤 → 可能的解法.
-Anything upstream should fix (e.g. README gaps) is noted there for a future
-GitHub issue.
+Non-trivial investigation is **research-first, and the findings are durable** —
+never let a root-cause hunt dissolve into chat history. Two committed trees:
+
+- `docs/research/YYYY-MM-DD-<slug>.md` — the point-in-time investigation:
+  what was tried, what was ruled out, the mechanism, the proposed solutions
+  (exemplar: `2026-07-03-writable-code-memory-sideload.md`). The date is
+  load-bearing: findings are true as-of that day's SDK/AGC behaviour.
+- `docs/issues/<slug>.md` — the tracked work item, in the existing style
+  现象 → 根因 → 排除项 → 复现步骤 → 可能的解法. Anything **upstream** should fix
+  (README gaps, adapter bugs) is noted here first, for a later GitHub issue on
+  `HanversionOvO/OHSidian` — we file, we don't push to upstream.
+
+Research is mandatory before adopting a new HarmonyOS capability or a new
+signing/provisioning path; not needed for build-config touch-ups or a fix an
+existing research doc already explains — cite that doc instead.
+
+## Session orchestration
+
+The main session is the orchestrator: it owns decisions, the real device, the
+signing materials, and the commits. Delegate a self-contained investigation or
+a multi-file adapter change to a sub-agent, and give it the **required reading**
+(this file, the relevant research/issue doc, the `vm-openeuler` skill), the
+**environment traps** (`git lfs pull` first, gitignored `build-profile.json5`,
+never commit `web_engine/BuildProfile.ets` churn), and the **boundaries**
+(no commits — the main session verifies the build itself and commits). One-line
+fixes and read-only checks stay in the main session.
 
 ## Commit style
 
 Upstream uses conventional commits with Chinese descriptions
 (`fix: 更新构建配置为发布模式`) — match that if asked to commit. No
 `Co-Authored-By` footers.
+
+## New work checklist
+
+- [ ] Non-trivial investigation → findings written to `docs/research/` (or an
+      existing research doc cited) before the fix.
+- [ ] The fix lives in the adapter/bridge layers, not in `obsidian.asar`.
+- [ ] New adapter → adapter class **+** DI registration **+** JSBind binding class
+      (all three), and the architecture description above updated if the call
+      flow or module split changed.
+- [ ] `assembleHap` succeeds; device behaviour verified when a device path exists.
+- [ ] No signing material, `agconnect-services.json`, or `build-profile.json5`
+      staged; no `web_engine/BuildProfile.ets` build churn in the commit.
+- [ ] `docs/issues/` updated if a tracked problem moved, and the project ledger
+      updated.
 
 Project ledger (cross-session progress): `~/Documents/Vault/20-Projects/Active/OHSidian.md`
 — create via `kms new project "OHSidian"` on first substantial work session
