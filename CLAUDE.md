@@ -122,7 +122,7 @@ nan-fedora `docs/rust-build.md`.
 ## Host (HarmonyOS PC) workspace — one-way sync, VM is the source of truth
 
 A copy of this repo lives on the host at `~/code/OHSidian` (VM view:
-`/mnt/linux_share/code/OHSidian`) as a **DevEco Studio sign/build/run station**
+`/mnt/linux_share/storage/Users/currentUser/code/OHSidian`) as a **DevEco Studio sign/build/run station**
 (the DevEco auto-signing path for restricted permissions). Rules:
 
 - `watchexec` + `~/.bin/code-sync` mirror VM `~/code` → host **one-way**,
